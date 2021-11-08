@@ -9,8 +9,6 @@ angular
 .module('dbt')
 .factory('project', ['$q', '$http', function($q, $http) {
 
-    var TARGET_PATH = '';
-
     var service = {
         project: {},
         tree: {
@@ -103,11 +101,13 @@ angular
         })
     }
 
-    service.loadProject = function() {
+    service.loadProject = function(metadataLocations) {
         var cache_bust = "?cb=" + (new Date()).getTime();
+        var manifestLocation = metadataLocations ? metadataLocations.manifest : "/manifest.json" + cache_bust;
+        var catalogLocation = metadataLocations ? metadataLocations.catalog : "/catalog.json" + cache_bust;
         var promises = [
-            loadFile('manifest', TARGET_PATH + "manifest.json" + cache_bust),
-            loadFile('catalog', TARGET_PATH + "catalog.json" + cache_bust),
+            loadFile('manifest', manifestLocation),
+            loadFile('catalog', catalogLocation),
         ]
 
         $q.all(promises).then(function(files) {
@@ -641,7 +641,19 @@ angular
     }
 
     service.init = function() {
-        service.loadProject()
+      const urlParams = new URLSearchParams(window.location.search);
+      var metadataEndpoint = urlParams.get('metadataEndpoint');
+
+      if(metadataEndpoint) {
+        loadFile('metadata', metadataEndpoint).then(function(res){
+          service.loadProject({
+            catalog: res.data.catalogUrl,
+            manifest: res.data.manifestUrl
+          });
+        });
+      } else {
+        service.loadProject();
+      }
     }
 
     return service;
